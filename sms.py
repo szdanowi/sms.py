@@ -186,11 +186,44 @@ def assure(what: bool, failure_message: str):
         raise TerminateApplication("Fatal: " + failure_message)
 
 
+def print_help(exec_name):
+    print("Command line tool for sending SMSes over an AT-compatible USB GSM modem",
+          "",
+          "Usage: {} [options] [PHONE_NUMBER] [MESSAGE]".format(exec_name),
+          "",
+          "  PHONE_NUMBER : needs to be a polish phone number, in one of two formats:",
+          "                 +48123456789 or 123456789",
+          "  MESSAGE      : contents of the SMS to be sent - does not need to be quoted",
+          "",
+          "Available options:",
+          "  -d DEVICE    : tells tool to use DEVICE instead of /dev/ttyUSB0 as the modem",
+          "  --help       : shows this help message and exits",
+          "",
+          "Example uses:",
+          "  {} 123456789 Will you call me?".format(exec_name),
+          "  {} -d /dev/ttyUSB2 987654321 \"Hello there!\"".format(exec_name),
+          sep='\n')
+
+
 PHONE_PATTERN = re.compile(r'([+]48)?\s?(?P<number>\d{9})')
 
 
-def main(arguments):
-    modem = AtModem('/dev/ttyUSB0')
+def main(exec_name, arguments: list):
+    if '--help' in arguments or '-h' in arguments:
+        print_help(exec_name)
+        exit(0)
+
+    modem_device = '/dev/ttyUSB0'
+    if '-d' in arguments:
+        try:
+            index = arguments.index('-d')
+            arguments.pop(index)
+            modem_device = arguments.pop(index)
+        except Exception as e:
+            Print.error("\nCould not find device to be set as the modem")
+            exit(2)
+
+    modem = AtModem(modem_device)
 
     try:
         print()
@@ -225,8 +258,12 @@ def main(arguments):
             Print.debug('  ' + e)
         exit(1)
 
+    except Exception as e:
+        Print.error("\nFatal: " + str(e))
+        exit(2)
+
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main(sys.argv[0], sys.argv[1:])
 
 print(Style.RESET_ALL)

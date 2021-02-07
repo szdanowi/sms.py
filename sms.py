@@ -184,7 +184,8 @@ class AtModem:
 
 class TerminateApplication(RuntimeError):
     def __init__(self, message):
-        super().__init__(self, message)
+        super().__init__(self)
+        self.what = message
 
 
 def assure(what: bool, failure_message: str):
@@ -258,10 +259,11 @@ def main(exec_name, arguments: list):
         print(Fore.MAGENTA + "---------------------------------\n" + Fore.RESET)
 
     except TerminateApplication as e:
-        Print.error("\nFatal: " + str(e))
-        Print.debug("\nHere's what the modem said:")
-        for e in modem.log:
-            Print.debug('  ' + e)
+        Print.error("\nFatal: " + e.what)
+        if len(modem.log) > 0:
+            Print.debug("\nHere's what the modem said:")
+            for e in modem.log:
+                Print.debug('  ' + e)
         exit(1)
 
     except Exception as e:

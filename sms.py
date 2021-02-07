@@ -173,7 +173,13 @@ class AtModem:
 
     def send_message(self, content: str) -> bool:
         Print.step('Entering message content')
-        return Print.result(self.SMS_SEND_RESPONSE_RE.match(self.make_command('{}\032'.format(content))) is not None)
+
+        lines = content.splitlines(keepends=False)
+        for line in lines[:-1]:
+            if self.make_command(line) != ">":
+                return Print.fail()
+
+        return Print.result(self.SMS_SEND_RESPONSE_RE.match(self.make_command('{}\032'.format(lines[-1]))) is not None)
 
 
 class TerminateApplication(RuntimeError):

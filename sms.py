@@ -12,44 +12,60 @@ from time import sleep
 from colorama import Fore, Style
 
 
-def note(what: str):
+def g_note(what: str):
     print("\033[s\033[K{}\033[u".format(what), end='', flush=True)
 
 
-def show(what: str, style='', end='\n'):
+def g_show(what: str, style='', end='\n'):
     print("\033[K{}{}".format(style, what) + Style.RESET_ALL, end=end, flush=True)
 
 
+def g_silent(*args, **kwargs):
+    pass
+
+
+def g_nc_show(what: str, style='', end='\n'):
+    print(what, end=end, flush=True)
+
+
 class Print:
+    note = g_note
+    show = g_show
+
+    @staticmethod
+    def disable_colors():
+        Print.note = g_silent
+        Print.show = g_nc_show
+
     @staticmethod
     def outgoing(what):
-        note("< " + what)
+        Print.note("< " + what)
 
     @staticmethod
     def incoming(what):
-        note("> " + what)
+        Print.note("> " + what)
 
     @staticmethod
     def error(what):
-        show(what, Fore.RED)
+        Print.show(what, Fore.RED)
 
     @staticmethod
     def step(what):
-        show(what + " ... ", Fore.MAGENTA, end='')
+        Print.show(what + " ... ", Fore.MAGENTA, end='')
 
     @staticmethod
     def ok() -> bool:
-        show("Ok", Fore.GREEN)
+        Print.show("Ok", Fore.GREEN)
         return True
 
     @staticmethod
     def fixed() -> bool:
-        show("Fixed", Fore.YELLOW)
+        Print.show("Fixed", Fore.YELLOW)
         return True
 
     @staticmethod
     def fail() -> bool:
-        show("Failed", Fore.GREEN)
+        Print.show("Failed", Fore.GREEN)
         return False
 
     @staticmethod
@@ -62,7 +78,7 @@ class Print:
 
     @staticmethod
     def debug(what):
-        show(what)
+        Print.show(what)
 
 
 class Animation:
@@ -77,7 +93,7 @@ class Animation:
             return
 
         self.frame = (self.frame + 1) % len(self.FRAMES)
-        note("{}".format(self.FRAMES[self.frame]))
+        Print.note("{}".format(self.FRAMES[self.frame]))
 
 
 class AtModem:
@@ -204,6 +220,7 @@ def print_help(exec_name):
           "",
           "Available options:",
           "  -d DEVICE    : tells tool to use DEVICE instead of /dev/ttyUSB0 as the modem",
+          "  --no-color   : tells tool not to use colored output"
           "  --help       : shows this help message and exits",
           "",
           "Example uses:",
@@ -216,6 +233,10 @@ PHONE_PATTERN = re.compile(r'([+]48)?\s?(?P<number>\d{9})')
 
 
 def main(exec_name, arguments: list):
+    if '--no-color' in arguments:
+        Print.disable_colors()
+        arguments.remove('--no-color')
+
     if '--help' in arguments or '-h' in arguments:
         print_help(exec_name)
         exit(0)
@@ -245,9 +266,11 @@ def main(exec_name, arguments: list):
         assure(len(message_contents) <= 160,
                "Your messsage is too long - it has {} characters when the limit is 160".format(len(message_contents)))
 
-        print(Fore.MAGENTA + "--- telling " + Fore.GREEN + phone_number + Fore.MAGENTA + " --------" + Fore.RESET)
-        print(Fore.GREEN + message_contents)
-        print(Fore.MAGENTA + "---------------------------------\n" + Fore.RESET)
+        Print.show("--- telling ", Fore.MAGENTA, end='')
+        Print.show(phone_number, Fore.GREEN, end='')
+        Print.show(" --------", Fore.MAGENTA)
+        Print.show(message_contents, Fore.GREEN)
+        Print.show("---------------------------------\n", Fore.MAGENTA)
 
         assure(modem.works(), "Your modem does not seem to be working")
         assure(modem.switch_to_gsm(), "Could not switch modem to GSM mode")
@@ -255,8 +278,8 @@ def main(exec_name, arguments: list):
         assure(modem.select_receiver(phone_number), "Could not set message receiver number")
         assure(modem.send_message(message_contents), "Could not sent message")
 
-        print(Fore.GREEN + "\n                    Message sent." + Fore.RESET)
-        print(Fore.MAGENTA + "---------------------------------\n" + Fore.RESET)
+        Print.show("\n                    Message sent.", Fore.GREEN)
+        Print.show("---------------------------------\n", Fore.MAGENTA)
 
     except TerminateApplication as e:
         Print.error("\nFatal: " + e.what)
